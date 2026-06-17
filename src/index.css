@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: "Noto Sans SC", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  background: #0F1A2E;
+  color: #FAF7F0;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(27, 42, 74, 0.3);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 168, 67, 0.3);
+  border-radius: 2px;
+}
+
+@layer utilities {
+  .btn-gold {
+    @apply bg-theater-gold text-theater-navy-dark font-semibold rounded-xl px-5 py-2.5
+      shadow-[0_2px_8px_rgba(212,168,67,0.3),inset_0_1px_0_rgba(255,255,255,0.2)]
+      active:shadow-[0_1px_2px_rgba(212,168,67,0.2)]
+      active:translate-y-px
+      transition-all duration-150;
+  }
+
+  .btn-outline {
+    @apply border border-theater-gold/40 text-theater-gold rounded-xl px-5 py-2.5
+      hover:bg-theater-gold/10 active:bg-theater-gold/20
+      transition-all duration-150;
+  }
+
+  .btn-danger {
+    @apply bg-theater-red text-white font-semibold rounded-xl px-5 py-2.5
+      shadow-[0_2px_8px_rgba(139,46,46,0.3)]
+      active:translate-y-px transition-all duration-150;
+  }
+
+  .card {
+    @apply bg-theater-navy-light/60 backdrop-blur-sm border border-white/5
+      rounded-2xl p-4;
+  }
+
+  .card-gold {
+    @apply bg-theater-navy-light/60 backdrop-blur-sm border border-theater-gold/20
+      rounded-2xl p-4;
+  }
+
+  .input-field {
+    @apply w-full bg-theater-navy-dark/60 border border-white/10 rounded-xl
+      px-4 py-3 text-theater-cream placeholder-white/30
+      focus:outline-none focus:border-theater-gold/50 focus:ring-1 focus:ring-theater-gold/30
+      transition-all duration-200;
+  }
+
+  .select-field {
+    @apply w-full bg-theater-navy-dark/60 border border-white/10 rounded-xl
+      px-4 py-3 text-theater-cream appearance-none
+      focus:outline-none focus:border-theater-gold/50 focus:ring-1 focus:ring-theater-gold/30
+      transition-all duration-200;
+  }
+
+  .page-container {
+    @apply px-4 pb-24 pt-2 min-h-screen;
+  }
+
+  .section-title {
+    @apply text-lg font-semibold text-theater-cream font-body;
+  }
+
+  .badge {
+    @apply text-xs px-2 py-0.5 rounded-full font-medium;
+  }
+}
