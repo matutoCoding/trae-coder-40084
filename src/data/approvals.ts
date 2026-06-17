@@ -38,42 +38,6 @@ export const approvalBranches: ApprovalBranch[] = [
 
 export const approvalRoutes: ApprovalRoute[] = [
   {
-    id: "route-1",
-    name: "特大型演出路由",
-    conditions: [
-      { id: "rc-1-1", field: "scale", operator: "eq", value: "特大型" },
-    ],
-    branchId: "branch-1",
-    priority: 1,
-  },
-  {
-    id: "route-2",
-    name: "大型演出路由",
-    conditions: [
-      { id: "rc-2-1", field: "scale", operator: "eq", value: "大型" },
-    ],
-    branchId: "branch-1",
-    priority: 2,
-  },
-  {
-    id: "route-3",
-    name: "中型演出路由",
-    conditions: [
-      { id: "rc-3-1", field: "scale", operator: "eq", value: "中型" },
-    ],
-    branchId: "branch-2",
-    priority: 3,
-  },
-  {
-    id: "route-4",
-    name: "小型演出路由",
-    conditions: [
-      { id: "rc-4-1", field: "scale", operator: "eq", value: "小型" },
-    ],
-    branchId: "branch-3",
-    priority: 4,
-  },
-  {
     id: "route-5",
     name: "音乐会特殊路由",
     conditions: [
@@ -89,16 +53,7 @@ export const approvalRoutes: ApprovalRoute[] = [
       { id: "rc-6-1", field: "performanceType", operator: "in", value: "舞蹈,戏曲" },
     ],
     branchId: "branch-2",
-    priority: 5,
-  },
-  {
-    id: "route-7",
-    name: "观众人数500-1000区间",
-    conditions: [
-      { id: "rc-7-1", field: "expectedAudience", operator: "between", value: "500,1000" },
-    ],
-    branchId: "branch-1",
-    priority: 6,
+    priority: 1,
   },
   {
     id: "route-8",
@@ -107,6 +62,51 @@ export const approvalRoutes: ApprovalRoute[] = [
       { id: "rc-8-1", field: "expectedAudience", operator: "gt", value: "1000" },
     ],
     branchId: "branch-1",
+    priority: 2,
+  },
+  {
+    id: "route-7",
+    name: "观众人数500-1000区间",
+    conditions: [
+      { id: "rc-7-1", field: "expectedAudience", operator: "between", value: "500,1000" },
+    ],
+    branchId: "branch-1",
+    priority: 3,
+  },
+  {
+    id: "route-1",
+    name: "特大型演出路由",
+    conditions: [
+      { id: "rc-1-1", field: "scale", operator: "eq", value: "特大型" },
+    ],
+    branchId: "branch-1",
+    priority: 4,
+  },
+  {
+    id: "route-2",
+    name: "大型演出路由",
+    conditions: [
+      { id: "rc-2-1", field: "scale", operator: "eq", value: "大型" },
+    ],
+    branchId: "branch-1",
+    priority: 5,
+  },
+  {
+    id: "route-3",
+    name: "中型演出路由",
+    conditions: [
+      { id: "rc-3-1", field: "scale", operator: "eq", value: "中型" },
+    ],
+    branchId: "branch-2",
+    priority: 6,
+  },
+  {
+    id: "route-4",
+    name: "小型演出路由",
+    conditions: [
+      { id: "rc-4-1", field: "scale", operator: "eq", value: "小型" },
+    ],
+    branchId: "branch-3",
     priority: 7,
   },
 ]

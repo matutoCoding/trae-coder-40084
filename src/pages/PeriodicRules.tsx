@@ -9,7 +9,7 @@ const weekDays = ["周日", "周一", "周二", "周三", "周四", "周五", "�
 export default function PeriodicRules() {
   const navigate = useNavigate()
   const { periodicRules, stages, troupes, updatePeriodicRule, deletePeriodicRule } = useTheaterStore()
-  const [expandedTroupe, setExpandedTroupe] = useState<string | null>(null)
+  const [collapsedTroupe, setCollapsedTroupe] = useState<Set<string>>(new Set())
 
   const rulesByTroupe = troupes.map(troupe => ({
     troupe,
@@ -22,8 +22,13 @@ export default function PeriodicRules() {
     updatePeriodicRule(id, { enabled: !enabled })
   }
 
-  const toggleExpand = (troupeId: string) => {
-    setExpandedTroupe(expandedTroupe === troupeId ? null : troupeId)
+  const toggleCollapse = (troupeId: string) => {
+    setCollapsedTroupe(prev => {
+      const next = new Set(prev)
+      if (next.has(troupeId)) next.delete(troupeId)
+      else next.add(troupeId)
+      return next
+    })
   }
 
   return (
@@ -51,98 +56,96 @@ export default function PeriodicRules() {
       </div>
 
       <div className="space-y-4">
-        {rulesByTroupe.map(({ troupe, rules }, groupIndex) => (
-          <motion.div
-            key={troupe.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: groupIndex * 0.1 }}
-            className="card overflow-hidden"
-          >
-            <button
-              onClick={() => toggleExpand(troupe.id)}
-              className="w-full flex items-center justify-between p-2 -m-2 mb-2"
+        {rulesByTroupe.map(({ troupe, rules }, groupIndex) => {
+          const isCollapsed = collapsedTroupe.has(troupe.id)
+          return (
+            <motion.div
+              key={troupe.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: groupIndex * 0.1 }}
             >
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: troupe.color }}
-                />
-                <span className="font-semibold text-theater-cream">{troupe.name}</span>
-                <span className="badge bg-white/5 text-white/50">{rules.length} 条规则</span>
-              </div>
-              {expandedTroupe === troupe.id ? (
-                <ChevronDown className="w-5 h-5 text-white/40" />
-              ) : (
-                <ChevronRight className="w-5 h-5 text-white/40" />
-              )}
-            </button>
+              <button
+                onClick={() => toggleCollapse(troupe.id)}
+                className="w-full flex items-center justify-between mb-2 px-1"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: troupe.color }}
+                  />
+                  <span className="font-semibold text-theater-cream">{troupe.name}</span>
+                  <span className="badge bg-white/5 text-white/50">{rules.length} 条规则</span>
+                </div>
+                {isCollapsed ? (
+                  <ChevronRight className="w-5 h-5 text-white/40" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-white/40" />
+                )}
+              </button>
 
-            <AnimatePresence>
-              {expandedTroupe === troupe.id && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden space-y-3 pt-2"
-                >
-                  {rules.map((rule, i) => (
-                    <motion.div
-                      key={rule.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className="card-gold p-3"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h3 className="font-semibold text-theater-cream text-sm">{rule.name}</h3>
-                          <span className={`badge text-xs mt-1 ${rule.enabled ? "bg-theater-gold/20 text-theater-gold" : "bg-white/5 text-white/40"}`}>
-                            {rule.enabled ? "已启用" : "已停用"}
+              <AnimatePresence>
+                {!isCollapsed && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="space-y-2"
+                  >
+                    {rules.map((rule, i) => (
+                      <motion.div
+                        key={rule.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.04 }}
+                        className={`card p-3 ${rule.enabled ? "border-theater-gold/10" : "border-white/5 opacity-60"}`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span className="font-semibold text-theater-cream text-sm truncate">{rule.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button onClick={() => toggleRule(rule.id, rule.enabled)}>
+                              {rule.enabled ? (
+                                <ToggleRight className="w-6 h-6 text-theater-gold" />
+                              ) : (
+                                <ToggleLeft className="w-6 h-6 text-white/30" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => deletePeriodicRule(rule.id)}
+                              className="text-white/20 hover:text-theater-red transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 text-xs flex-wrap">
+                          <span className="flex items-center gap-1.5 text-theater-cream/70">
+                            <Calendar className="w-3.5 h-3.5 text-theater-gold/60" />
+                            {weekDays[rule.dayOfWeek]}
+                          </span>
+                          <span className="flex items-center gap-1.5 text-theater-cream/70">
+                            <Clock className="w-3.5 h-3.5 text-theater-gold/60" />
+                            {rule.startTime}-{rule.endTime}
+                          </span>
+                          <span className="flex items-center gap-1.5 text-theater-cream/70">
+                            <MapPin className="w-3.5 h-3.5 text-theater-gold/60" />
+                            {getStageName(rule.stageId)}
+                          </span>
+                          <span className={`badge text-[10px] ${rule.enabled ? "bg-theater-gold/20 text-theater-gold" : "bg-white/5 text-white/40"}`}>
+                            {rule.enabled ? "启用" : "停用"}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => toggleRule(rule.id, rule.enabled)}>
-                            {rule.enabled ? (
-                              <ToggleRight className="w-6 h-6 text-theater-gold" />
-                            ) : (
-                              <ToggleLeft className="w-6 h-6 text-white/30" />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => deletePeriodicRule(rule.id)}
-                            className="text-white/20 hover:text-theater-red transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="flex items-center gap-1.5 text-white/60">
-                          <Calendar className="w-3.5 h-3.5 text-theater-gold/60" />
-                          {weekDays[rule.dayOfWeek]}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-white/60">
-                          <Clock className="w-3.5 h-3.5 text-theater-gold/60" />
-                          {rule.startTime} - {rule.endTime}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-white/60 col-span-2">
-                          <MapPin className="w-3.5 h-3.5 text-theater-gold/60" />
-                          {getStageName(rule.stageId)} · {rule.occupancyType}
-                        </div>
-                      </div>
-
-                      <div className="mt-2 pt-2 border-t border-white/5 text-xs text-white/40">
-                        有效期：{rule.effectiveFrom} 至 {rule.effectiveTo}
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        ))}
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )
+        })}
 
         {periodicRules.length === 0 && (
           <div className="card text-center text-white/40 py-12">

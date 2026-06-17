@@ -29,22 +29,15 @@ export default function StageList() {
   const submit = () => {
     if (!name.trim()) return
     const now = Date.now()
-    const lightingEquipment = Array.from({ length: Math.min(6, Math.ceil(lightingCount / 6)) }, (_, i) => ({
-      id: `el-new-${now}-${i}`,
-      name: ["聚光灯", "面光灯", "侧光灯", "天幕灯", "换色器", "调光台"][i] || "灯光设备",
-      category: "灯光" as const,
-      spec: "基础配置",
-      quantity: Math.min(Math.ceil(lightingCount / 6), lightingCount - i * 6),
-      stageId: `stage-${now}`,
-    }))
-    const soundEquipment = Array.from({ length: Math.min(5, Math.ceil(soundCount / 4)) }, (_, i) => ({
-      id: `es-new-${now}-${i}`,
-      name: ["主扩音箱", "返听音箱", "调音台", "无线话筒", "头戴话筒"][i] || "音响设备",
-      category: "音响" as const,
-      spec: "基础配置",
-      quantity: Math.min(Math.ceil(soundCount / 4), soundCount - i * 4),
-      stageId: `stage-${now}`,
-    }))
+    const stageId = `stage-${now}`
+    const lightingEquipment = [{
+      id: `el-new-${now}-0`, name: "灯光设备", category: "灯光" as const,
+      spec: "基础配置", quantity: lightingCount, stageId,
+    }]
+    const soundEquipment = [{
+      id: `es-new-${now}-0`, name: "音响设备", category: "音响" as const,
+      spec: "基础配置", quantity: soundCount, stageId,
+    }]
     addStage({
       id: `stage-${now}`,
       name,

@@ -6,7 +6,7 @@ import { useTheaterStore } from "@/store/theaterStore"
 export default function ExceptionAdjust() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { occupancies, stages, troupes, periodicRules, updateOccupancy, deleteOccupancy } = useTheaterStore()
+  const { occupancies, stages, troupes, periodicRules, updateOccupancy, addOccupancy } = useTheaterStore()
 
   const occupancy = occupancies.find((o) => o.id === id)
 
@@ -40,11 +40,22 @@ export default function ExceptionAdjust() {
 
   const handleSave = () => {
     updateOccupancy(occupancy.id, {
+      isException: true,
+      cancelled: true,
+    })
+    addOccupancy({
+      id: `occ-exc-${Date.now()}`,
+      stageId: form.stageId,
+      troupeId: occupancy.troupeId,
       date: form.date,
       startTime: form.startTime,
       endTime: form.endTime,
-      stageId: form.stageId,
+      type: occupancy.type,
+      source: "periodic",
+      periodicRuleId: occupancy.periodicRuleId,
       isException: true,
+      cancelled: false,
+      remark: `由 ${occupancy.date} ${occupancy.startTime}-${occupancy.endTime} 改期`,
     })
     navigate(-1)
   }
