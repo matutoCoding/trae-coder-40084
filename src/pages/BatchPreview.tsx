@@ -1,33 +1,49 @@
 import { useState, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { Calendar, AlertTriangle, CheckCircle, Sparkles, ChevronLeft, ChevronRight, CalendarDays, BarChart3, Zap, XCircle, Check } from "lucide-react"
+import {
+  Calendar, AlertTriangle, CheckCircle, Sparkles, ChevronLeft, ChevronRight,
+  CalendarDays, BarChart3, Zap, XCircle, Check, X, Clock, MapPin, Users, Filter,
+} from "lucide-react"
 import { useTheaterStore } from "@/store/theaterStore"
-import type { Occupancy } from "@/types"
-import { format, addDays, startOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, getMonth, addMonths, subMonths, isSameDay, parseISO, isSameMonth, isWithinInterval } from "date-fns"
+import type { Occupancy, OccupancyType } from "@/types"
+import {
+  format, addDays, startOfWeek, startOfMonth, endOfMonth, eachDayOfInterval,
+  addMonths, subMonths, isSameDay, parseISO, isSameMonth,
+} from "date-fns"
 import { zhCN } from "date-fns/locale"
 
 const WEEK_LABELS = ["日", "一", "二", "三", "四", "五", "六"]
 
-type CellStatus = "new" | "skipped" | "conflict" | "performance"
+type CellStatus = "new" | "existing" | "skipped" | "conflict" | "performance"
 
-interface CellInfo {
-  date: Date
-  statuses: { ruleName: string; status: CellStatus; time: string }[]
+interface DayRecord {
+  ruleId: string
+  ruleName: string
+  stageId: string
+  troupeId: string
+  startTime: string
+  endTime: string
+  type: OccupancyType
+  status: CellStatus
+  occupancyId?: string
 }
 
 export default function BatchPreview() {
   const navigate = useNavigate()
   const { periodicRules, troupes, stages, generateFromRule, batchAddOccupancies, occupancies } = useTheaterStore()
-  const [weeks, setWeeks] = useState<4 | 8 | 12>(4)
+  const [weeks, setWeeks] = useState<4 | 8 | 12>(8)
   const [success, setSuccess] = useState(false)
   const [viewMode, setViewMode] = useState<"list" | "month">("month")
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()))
+  const [onlySafe, setOnlySafe] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
 
   const enabledRules = periodicRules.filter((r) => r.enabled)
 
   const getTroupeName = (id: string) => troupes.find((t) => t.id === id)?.name ?? "未知"
   const getStageName = (id: string) => stages.find((s) => s.id === id)?.name ?? "未知"
+  const getTroupeColor = (id: string) => troupes.find((t) => t.id === id)?.color ?? "#888"
 
   const previewItems = useMemo(() => {
     const all: Occupancy[] = []
@@ -67,23 +83,20 @@ export default function BatchPreview() {
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))
   }, [previewItems])
 
-  const monthCells = useMemo<CellInfo[]>(() => {
+  const dayRecords = useMemo(() => {
+    const map = new Map<string, DayRecord[]>()
     const start = startOfMonth(currentMonth)
     const end = endOfMonth(currentMonth)
     const days = eachDayOfInterval({ start, end })
-    const firstWeekPad = start.getDay()
-
-    const padded: CellInfo[] = Array.from({ length: firstWeekPad }, (_, i) => ({
-      date: addDays(start, -firstWeekPad + i),
-      statuses: [],
-    }))
 
     for (const day of days) {
       const dateStr = format(day, "yyyy-MM-dd")
-      const cellStatuses: CellInfo["statuses"] = []
+      const records: DayRecord[] = []
 
       for (const rule of enabledRules) {
-        if (!isSameDay(addDays(startOfWeek(day, { weekStartsOn: 1 }), rule.dayOfWeek), day)) continue
+        const targetDay = addDays(startOfWeek(day, { weekStartsOn: 0 }), rule.dayOfWeek)
+        if (!isSameDay(targetDay, day)) continue
+
         const effectiveStart = parseISO(rule.effectiveFrom)
         const effectiveEnd = parseISO(rule.effectiveTo)
         if (day < effectiveStart || day > effectiveEnd) continue
@@ -91,68 +104,108 @@ export default function BatchPreview() {
         const existingExact = occupancies.find(
           o => o.periodicRuleId === rule.id && o.date === dateStr
         )
-
-        const hasConflict = occupancies.filter(o => !o.cancelled && o.stageId === rule.stageId && o.date === dateStr)
-          .some(o => o.startTime < rule.endTime && rule.startTime < o.endTime)
-
-        const performanceOcc = occupancies.find(
-          o => o.stageId === rule.stageId && o.date === dateStr && o.source === "performance" && !o.cancelled
+        const dayStageOccs = occupancies.filter(
+          o => !o.cancelled && o.stageId === rule.stageId && o.date === dateStr
         )
+        const hasConflict = dayStageOccs.some(o => o.startTime < rule.endTime && rule.startTime < o.endTime)
+        const performanceOcc = dayStageOccs.find(o => o.source === "performance")
 
         if (existingExact && existingExact.isException) {
-          cellStatuses.push({ ruleName: rule.name, status: "skipped", time: `${rule.startTime}-${rule.endTime}` })
+          records.push({
+            ruleId: rule.id, ruleName: rule.name, stageId: rule.stageId, troupeId: rule.troupeId,
+            startTime: rule.startTime, endTime: rule.endTime, type: rule.occupancyType,
+            status: "skipped", occupancyId: existingExact.id,
+          })
+        } else if (existingExact && !existingExact.isException) {
+          records.push({
+            ruleId: rule.id, ruleName: rule.name, stageId: rule.stageId, troupeId: rule.troupeId,
+            startTime: rule.startTime, endTime: rule.endTime, type: rule.occupancyType,
+            status: "existing", occupancyId: existingExact.id,
+          })
         } else if (performanceOcc) {
-          cellStatuses.push({ ruleName: rule.name, status: "performance", time: `${rule.startTime}-${rule.endTime}` })
+          records.push({
+            ruleId: rule.id, ruleName: rule.name, stageId: rule.stageId, troupeId: rule.troupeId,
+            startTime: rule.startTime, endTime: rule.endTime, type: rule.occupancyType,
+            status: "performance",
+          })
         } else if (hasConflict) {
-          cellStatuses.push({ ruleName: rule.name, status: "conflict", time: `${rule.startTime}-${rule.endTime}` })
-        } else if (!existingExact) {
-          cellStatuses.push({ ruleName: rule.name, status: "new", time: `${rule.startTime}-${rule.endTime}` })
+          records.push({
+            ruleId: rule.id, ruleName: rule.name, stageId: rule.stageId, troupeId: rule.troupeId,
+            startTime: rule.startTime, endTime: rule.endTime, type: rule.occupancyType,
+            status: "conflict",
+          })
+        } else {
+          records.push({
+            ruleId: rule.id, ruleName: rule.name, stageId: rule.stageId, troupeId: rule.troupeId,
+            startTime: rule.startTime, endTime: rule.endTime, type: rule.occupancyType,
+            status: "new",
+          })
         }
       }
-      padded.push({ date: day, statuses: cellStatuses })
+      map.set(dateStr, records)
+    }
+    return map
+  }, [currentMonth, enabledRules, occupancies])
+
+  const monthCells = useMemo(() => {
+    const start = startOfMonth(currentMonth)
+    const end = endOfMonth(currentMonth)
+    const days = eachDayOfInterval({ start, end })
+    const firstWeekPad = start.getDay()
+
+    const padded = Array.from({ length: firstWeekPad }, (_, i) => ({
+      date: addDays(start, -firstWeekPad + i),
+      records: [] as DayRecord[],
+    }))
+
+    for (const day of days) {
+      padded.push({
+        date: day,
+        records: dayRecords.get(format(day, "yyyy-MM-dd")) ?? [],
+      })
     }
 
     while (padded.length % 7 !== 0) {
-      padded.push({ date: addDays(padded[padded.length - 1].date, 1), statuses: [] })
+      padded.push({ date: addDays(padded[padded.length - 1].date, 1), records: [] })
     }
-
     return padded
-  }, [currentMonth, enabledRules, occupancies])
+  }, [currentMonth, dayRecords])
 
-  const conflictCount = previewItems.filter((item) => conflicts.has(item.id)).length
   const monthStats = useMemo(() => {
-    let n = 0, s = 0, c = 0, p = 0
-    for (const cell of monthCells) {
-      if (!isSameMonth(cell.date, currentMonth)) continue
-      for (const st of cell.statuses) {
-        if (st.status === "new") n++
-        else if (st.status === "skipped") s++
-        else if (st.status === "conflict") c++
-        else if (st.status === "performance") p++
-      }
+    const stats: Record<CellStatus, number> = { new: 0, existing: 0, skipped: 0, conflict: 0, performance: 0 }
+    for (const [, records] of dayRecords) {
+      for (const r of records) stats[r.status]++
     }
-    return { new: n, skipped: s, conflict: c, performance: p }
-  }, [monthCells, currentMonth])
+    return stats
+  }, [dayRecords])
 
   const statusStyle: Record<CellStatus, { bg: string; dot: string; label: string; icon: any }> = {
     new: { bg: "bg-green-500/15 border-green-500/30", dot: "bg-green-400", label: "待生成", icon: Check },
+    existing: { bg: "bg-blue-500/15 border-blue-500/30", dot: "bg-blue-400", label: "已存在", icon: Calendar },
     skipped: { bg: "bg-amber-500/15 border-amber-500/30", dot: "bg-amber-400", label: "已跳过", icon: XCircle },
     conflict: { bg: "bg-red-500/15 border-red-500/30", dot: "bg-red-400", label: "冲突", icon: AlertTriangle },
     performance: { bg: "bg-theater-gold/15 border-theater-gold/40", dot: "bg-theater-gold", label: "演出占用", icon: Sparkles },
   }
 
+  const itemsToGenerate = onlySafe
+    ? previewItems.filter(i => !conflicts.has(i.id))
+    : previewItems
+
   const handleConfirm = () => {
-    batchAddOccupancies(previewItems)
+    batchAddOccupancies(itemsToGenerate)
     setSuccess(true)
-    setTimeout(() => navigate(-1), 1500)
+    setTimeout(() => navigate("/schedule"), 1500)
   }
+
+  const selectedRecords = selectedDate ? (dayRecords.get(format(selectedDate, "yyyy-MM-dd")) ?? []) : []
 
   if (success) {
     return (
       <div className="page-container flex flex-col items-center justify-center min-h-screen">
         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-center">
           <CheckCircle size={64} className="text-theater-gold mx-auto mb-4" />
-          <p className="text-theater-cream text-lg font-semibold">成功生成 {previewItems.length} 条占用</p>
+          <p className="text-theater-cream text-lg font-semibold">成功生成 {itemsToGenerate.length} 条占用</p>
+          <p className="text-white/40 text-sm mt-2">即将跳转到排期日历...</p>
         </motion.div>
       </div>
     )
@@ -232,17 +285,17 @@ export default function BatchPreview() {
           </div>
 
           <div className="card mb-4 !p-3">
-            <div className="grid grid-cols-4 gap-2 text-center">
-              {(["new", "skipped", "conflict", "performance"] as CellStatus[]).map(s => {
+            <div className="grid grid-cols-5 gap-1.5 text-center">
+              {(["new", "existing", "skipped", "conflict", "performance"] as CellStatus[]).map(s => {
                 const st = statusStyle[s]
                 const Icon = st.icon
                 return (
                   <div key={s} className={`rounded-lg p-2 border ${st.bg}`}>
-                    <div className="flex items-center justify-center gap-1 mb-1">
-                      <Icon size={12} className={st.dot.replace("bg-", "text-")} />
-                      <span className="text-xs">{st.label}</span>
+                    <div className="flex items-center justify-center gap-1 mb-0.5">
+                      <Icon size={11} className={st.dot.replace("bg-", "text-")} />
+                      <span className="text-[10px]">{st.label}</span>
                     </div>
-                    <div className={`text-xl font-bold ${st.dot.replace("bg-", "text-")}`}>
+                    <div className={`text-base font-bold ${st.dot.replace("bg-", "text-")}`}>
                       {monthStats[s]}
                     </div>
                   </div>
@@ -251,44 +304,45 @@ export default function BatchPreview() {
             </div>
           </div>
 
-          <div className="card mb-4 !p-3">
-            <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-white/40 mb-1.5">
-              {WEEK_LABELS.map(w => <div key={w}>{w}</div>)}
+          <div className="card mb-4 !p-2">
+            <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-white/40 mb-1">
+              {WEEK_LABELS.map(w => <div key={w} className="py-0.5">{w}</div>)}
             </div>
             <div className="grid grid-cols-7 gap-1">
               {monthCells.map((cell, idx) => {
                 const inMonth = isSameMonth(cell.date, currentMonth)
                 const isT = isSameDay(cell.date, new Date())
                 return (
-                  <div
+                  <button
                     key={idx}
+                    onClick={() => inMonth && cell.records.length > 0 && setSelectedDate(cell.date)}
                     className={`aspect-square rounded-lg border p-0.5 flex flex-col ${
-                      !inMonth ? "opacity-20" : ""
-                    } ${isT ? "border-theater-gold/50" : "border-white/5"} ${
-                      cell.statuses.length > 0 ? "bg-white/3" : "bg-transparent"
+                      !inMonth ? "opacity-15 pointer-events-none" : cell.records.length > 0 ? "cursor-pointer hover:border-theater-gold/40" : ""
+                    } ${isT ? "border-theater-gold/60" : "border-white/5"} ${
+                      cell.records.length > 0 ? "bg-white/3" : "bg-transparent"
                     }`}
                   >
                     <div className={`text-[9px] text-right pr-0.5 ${isT ? "text-theater-gold font-bold" : "text-white/40"}`}>
                       {format(cell.date, "d")}
                     </div>
-                    <div className="flex-1 flex flex-col gap-0.5 overflow-hidden">
-                      {cell.statuses.slice(0, 3).map((s, si) => (
+                    <div className="flex-1 flex flex-col gap-0.5 overflow-hidden px-0.5 pb-0.5">
+                      {cell.records.slice(0, 3).map((r, si) => (
                         <div
                           key={si}
-                          title={`${s.ruleName} ${s.time}`}
-                          className={`h-1 rounded-full ${statusStyle[s.status].dot}`}
+                          title={`${r.ruleName} ${r.startTime}-${r.endTime}`}
+                          className={`h-1 rounded-full ${statusStyle[r.status].dot}`}
                         />
                       ))}
-                      {cell.statuses.length > 3 && (
-                        <div className="text-[8px] text-white/40">+{cell.statuses.length - 3}</div>
+                      {cell.records.length > 3 && (
+                        <div className="text-[8px] text-white/40 text-center leading-none">+{cell.records.length - 3}</div>
                       )}
                     </div>
-                  </div>
+                  </button>
                 )
               })}
             </div>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3 pt-2 border-t border-white/5 text-[10px]">
-              {(["new", "skipped", "conflict", "performance"] as CellStatus[]).map(s => {
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5 pt-2 border-t border-white/5 text-[10px]">
+              {(["new", "existing", "skipped", "conflict", "performance"] as CellStatus[]).map(s => {
                 const st = statusStyle[s]
                 return (
                   <div key={s} className="flex items-center gap-1 text-white/40">
@@ -302,12 +356,73 @@ export default function BatchPreview() {
         </>
       )}
 
-      {(conflictCount > 0 || monthStats.conflict > 0) && (
+      <AnimatePresence>
+        {selectedDate && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end"
+            onClick={() => setSelectedDate(null)}
+          >
+            <motion.div
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28 }}
+              className="w-full bg-theater-navy-dark rounded-t-3xl p-5 max-h-[80vh] overflow-y-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-xl font-display font-bold text-theater-cream">
+                    {format(selectedDate, "yyyy年M月d日", { locale: zhCN })}
+                  </h3>
+                  <p className="text-xs text-white/40 mt-0.5">共 {selectedRecords.length} 条候选记录</p>
+                </div>
+                <button onClick={() => setSelectedDate(null)} className="p-1.5 rounded-full bg-white/5 text-white/50">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {selectedRecords.length === 0 && <div className="text-center text-white/30 py-10">当天无候选记录</div>}
+                {selectedRecords.map(rec => {
+                  const st = statusStyle[rec.status]
+                  const Icon = st.icon
+                  return (
+                    <motion.div
+                      key={`${rec.ruleId}-${rec.status}`}
+                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                      className={`card !p-3 !border-l-4 ${st.bg}`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: getTroupeColor(rec.troupeId) }}
+                          />
+                          <span className="text-theater-cream text-sm font-medium truncate">{rec.ruleName}</span>
+                        </div>
+                        <span className={`badge text-[10px] flex items-center gap-0.5 ${st.bg} ${st.dot.replace("bg-", "text-")}`}>
+                          <Icon size={8} />{st.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-white/50 flex-wrap">
+                        <span className="flex items-center gap-1"><Clock size={10} className="text-theater-gold/60" />{rec.startTime}–{rec.endTime}</span>
+                        <span className="flex items-center gap-1"><MapPin size={10} className="text-theater-gold/60" />{getStageName(rec.stageId)}</span>
+                        <span className="flex items-center gap-1"><Users size={10} className="text-theater-gold/60" />{getTroupeName(rec.troupeId)}</span>
+                        <span className="badge bg-white/5 text-white/40 text-[9px]">{rec.type}</span>
+                      </div>
+                    </motion.div>
+                  )
+                })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {viewMode === "list" && monthStats.conflict > 0 && (
         <div className="card border-theater-red/40 mb-4 flex items-center gap-2">
           <AlertTriangle size={18} className="text-theater-red-light shrink-0" />
-          <span className="text-theater-red-light text-sm">
-            检测到 {viewMode === "list" ? conflictCount : monthStats.conflict} 条时间冲突
-          </span>
+          <span className="text-theater-red-light text-sm">检测到 {monthStats.conflict} 条时间冲突</span>
         </div>
       )}
 
@@ -328,8 +443,7 @@ export default function BatchPreview() {
                   return (
                     <motion.div
                       key={item.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
+                      initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.02 }}
                       className={`card py-2 px-3 flex items-center justify-between ${isConflict ? "!border-theater-red/40" : ""}`}
                     >
@@ -348,17 +462,24 @@ export default function BatchPreview() {
               </div>
             </div>
           ))}
-
-          {previewItems.length === 0 && (
-            <div className="text-center py-12 text-white/30 text-sm">无可预览的占用记录</div>
-          )}
+          {previewItems.length === 0 && <div className="text-center py-12 text-white/30 text-sm">无可预览的占用记录</div>}
         </div>
       )}
 
-      {previewItems.length > 0 && viewMode === "list" && (
+      {previewItems.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-theater-navy-dark/90 backdrop-blur-sm border-t border-white/5">
+          <label className="flex items-center gap-2 mb-3 text-sm text-white/60">
+            <input
+              type="checkbox"
+              checked={onlySafe}
+              onChange={e => setOnlySafe(e.target.checked)}
+              className="accent-theater-gold w-4 h-4"
+            />
+            <Filter size={14} />
+            仅生成无冲突记录（{previewItems.filter(i => !conflicts.has(i.id)).length} / {previewItems.length}）
+          </label>
           <button className="btn-gold w-full flex items-center justify-center gap-2" onClick={handleConfirm}>
-            <Sparkles size={18} /> 确认生成 {previewItems.length} 条占用
+            <Sparkles size={18} /> 确认生成 {itemsToGenerate.length} 条占用
           </button>
         </div>
       )}

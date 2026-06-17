@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import type { Stage, Troupe, Occupancy, PeriodicRule, ApprovalBranch, ApprovalRoute, Performance } from "@/types"
+import type { Stage, Troupe, Occupancy, PeriodicRule, ApprovalBranch, ApprovalRoute, Performance, EquipmentItem, EquipmentCategory } from "@/types"
 import { stages as mockStages, troupes as mockTroupes } from "@/data/stages"
 import { initialOccupancies, periodicRules as mockRules } from "@/data/occupancies"
 import { approvalBranches as mockBranches, approvalRoutes as mockRoutes } from "@/data/approvals"
@@ -17,6 +17,9 @@ interface TheaterStore {
 
   addStage: (stage: Stage) => void
   updateStage: (id: string, data: Partial<Stage>) => void
+  addEquipment: (stageId: string, category: EquipmentCategory, item: Omit<EquipmentItem, "id" | "stageId" | "category">) => void
+  updateEquipment: (stageId: string, equipmentId: string, data: Partial<EquipmentItem>) => void
+  deleteEquipment: (stageId: string, equipmentId: string) => void
 
   addOccupancy: (occ: Occupancy) => void
   updateOccupancy: (id: string, data: Partial<Occupancy>) => void
@@ -54,6 +57,34 @@ export const useTheaterStore = create<TheaterStore>((set, get) => ({
 
   addStage: (stage) => set((s) => ({ stages: [...s.stages, stage] })),
   updateStage: (id, data) => set((s) => ({ stages: s.stages.map((st) => (st.id === id ? { ...st, ...data } : st)) })),
+  addEquipment: (stageId, category, item) => set((s) => ({
+    stages: s.stages.map(st => {
+      if (st.id !== stageId) return st
+      const newItem: EquipmentItem = { ...item, id: `eq-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, stageId, category }
+      if (category === "灯光") return { ...st, lightingEquipment: [...st.lightingEquipment, newItem] }
+      return { ...st, soundEquipment: [...st.soundEquipment, newItem] }
+    })
+  })),
+  updateEquipment: (stageId, equipmentId, data) => set((s) => ({
+    stages: s.stages.map(st => {
+      if (st.id !== stageId) return st
+      return {
+        ...st,
+        lightingEquipment: st.lightingEquipment.map(e => e.id === equipmentId ? { ...e, ...data } : e),
+        soundEquipment: st.soundEquipment.map(e => e.id === equipmentId ? { ...e, ...data } : e),
+      }
+    })
+  })),
+  deleteEquipment: (stageId, equipmentId) => set((s) => ({
+    stages: s.stages.map(st => {
+      if (st.id !== stageId) return st
+      return {
+        ...st,
+        lightingEquipment: st.lightingEquipment.filter(e => e.id !== equipmentId),
+        soundEquipment: st.soundEquipment.filter(e => e.id !== equipmentId),
+      }
+    })
+  })),
 
   addOccupancy: (occ) => set((s) => ({ occupancies: [...s.occupancies, occ] })),
   updateOccupancy: (id, data) => set((s) => ({ occupancies: s.occupancies.map((o) => (o.id === id ? { ...o, ...data } : o)) })),

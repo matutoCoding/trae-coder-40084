@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, ChevronDown, ChevronUp, AlertTriangle, Clock, MapPin, Users, X } from "lucide-react"
+import { ArrowLeft, ChevronDown, ChevronUp, AlertTriangle, Clock, MapPin, Users, X, Send } from "lucide-react"
 import { useTheaterStore } from "@/store/theaterStore"
 import type { PerformanceType, PerformanceScale, Performance, EquipmentRequirement, Occupancy } from "@/types"
 
@@ -24,6 +24,8 @@ export default function NewPerformance() {
   const [soundReqs, setSoundReqs] = useState<EquipmentRequirement[]>([])
   const [expandLighting, setExpandLighting] = useState(false)
   const [expandSound, setExpandSound] = useState(false)
+
+  const timeInvalid = date && startTime && endTime && startTime >= endTime
 
   const selectedStage = stages.find(s => s.id === stageId)
   const getTroupeName = (id: string) => troupes.find(t => t.id === id)?.name ?? "未知剧团"
@@ -68,6 +70,10 @@ export default function NewPerformance() {
   }
 
   const handleSubmit = (status: "draft" | "pending") => {
+    if (status === "pending" && timeInvalid) {
+      alert("请先修正时间段：结束时间必须晚于开始时间")
+      return
+    }
     if (status === "pending" && conflicts.length > 0) {
       const ok = confirm(`检测到 ${conflicts.length} 个档期冲突，是否仍要提交审批？`)
       if (!ok) return
@@ -131,6 +137,15 @@ export default function NewPerformance() {
             </div>
           </div>
 
+          {timeInvalid && (
+            <div className="mt-3 card !border-orange-500/40">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={16} className="text-orange-400 shrink-0" />
+                <span className="text-orange-400 text-sm">结束时间必须晚于开始时间</span>
+              </div>
+            </div>
+          )}
+
           {conflicts.length > 0 && (
             <div className="mt-3 card !border-theater-red/40">
               <div className="flex items-center gap-2 mb-2">
@@ -139,7 +154,11 @@ export default function NewPerformance() {
               </div>
               <div className="space-y-1.5">
                 {conflicts.map(occ => (
-                  <div key={occ.id} className="bg-theater-red/10 rounded-lg px-3 py-2 text-xs">
+                  <button
+                    key={occ.id}
+                    onClick={() => navigate(`/schedule/occupancy/${occ.id}`)}
+                    className="w-full text-left bg-theater-red/10 rounded-lg px-3 py-2 text-xs hover:bg-theater-red/15 transition-colors"
+                  >
                     <div className="flex items-center gap-1.5 text-theater-cream">
                       <Clock size={11} className="text-theater-red-light" />
                       <span>{occ.startTime}–{occ.endTime}</span>
@@ -159,8 +178,9 @@ export default function NewPerformance() {
                       {occ.source === "performance" && (
                         <span className="badge bg-white/5 text-white/40 text-[9px]">演出登记</span>
                       )}
+                      <span className="text-theater-gold/60 text-[9px] ml-auto">点击查看 →</span>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
               <p className="mt-2 text-[11px] text-white/40">
@@ -225,7 +245,13 @@ export default function NewPerformance() {
 
         <div className="flex gap-3 pt-4">
           <button onClick={() => handleSubmit("draft")} className="btn-outline flex-1" disabled={!name}>保存草稿</button>
-          <button onClick={() => handleSubmit("pending")} className="btn-gold flex-1" disabled={!isValid}>提交审批</button>
+          <button
+            onClick={() => handleSubmit("pending")}
+            className="btn-gold flex-1 disabled:opacity-40"
+            disabled={!isValid || timeInvalid}
+          >
+            <Send size={16} className="inline mr-1" />提交审批
+          </button>
         </div>
       </div>
     </div>
