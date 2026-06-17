@@ -72,6 +72,9 @@ export default function StageDetail() {
   const updateStage = useTheaterStore((s) => s.updateStage)
   const stage = stages.find((s) => s.id === id)
 
+  const totalLighting = stage?.lightingEquipment.reduce((s, e) => s + e.quantity, 0) ?? 0
+  const totalSound = stage?.soundEquipment.reduce((s, e) => s + e.quantity, 0) ?? 0
+
   if (!stage) {
     return (
       <div className="page-container flex items-center justify-center">
@@ -100,11 +103,34 @@ export default function StageDetail() {
           </span>
         </div>
 
-        <div className="flex items-center gap-5 text-sm text-white/60 mb-4">
-          <span className="flex items-center gap-1.5">
+        <div className="flex items-center gap-4 text-sm mb-4 flex-wrap">
+          <span className="flex items-center gap-1.5 text-white/60">
             <Users size={14} className="text-theater-gold/70" />
             {stage.seatCount} 座
           </span>
+          <span className="flex items-center gap-1.5 text-yellow-300/90">
+            <Zap size={14} className="text-yellow-400/80" />
+            灯光 {totalLighting} 台
+          </span>
+          <span className="flex items-center gap-1.5 text-blue-300/90">
+            <Volume2 size={14} className="text-blue-400/80" />
+            音响 {totalSound} 台
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="bg-theater-navy-dark/50 rounded-xl p-2.5 text-center">
+            <div className="text-xs text-white/40">座位数</div>
+            <div className="text-lg font-bold text-theater-cream mt-0.5">{stage.seatCount}</div>
+          </div>
+          <div className="bg-yellow-500/10 rounded-xl p-2.5 text-center">
+            <div className="text-xs text-yellow-300/60">灯光设备</div>
+            <div className="text-lg font-bold text-yellow-300 mt-0.5">{totalLighting}</div>
+          </div>
+          <div className="bg-blue-500/10 rounded-xl p-2.5 text-center">
+            <div className="text-xs text-blue-300/60">音响设备</div>
+            <div className="text-lg font-bold text-blue-300 mt-0.5">{totalSound}</div>
+          </div>
         </div>
 
         <div className="flex items-center justify-between">
@@ -121,7 +147,7 @@ export default function StageDetail() {
           >
             <span
               className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${
-                stage.status === "active" ? "left-6.5" : "left-0.5"
+                stage.status === "active" ? "translate-x-6" : "translate-x-0.5"
               }`}
             />
           </button>

@@ -1,15 +1,15 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, ChevronDown, ChevronUp } from "lucide-react"
+import { ArrowLeft, ChevronDown, ChevronUp, AlertTriangle, Clock, MapPin, Users, X } from "lucide-react"
 import { useTheaterStore } from "@/store/theaterStore"
-import type { PerformanceType, PerformanceScale, Performance, EquipmentRequirement } from "@/types"
+import type { PerformanceType, PerformanceScale, Performance, EquipmentRequirement, Occupancy } from "@/types"
 
 const perfTypes: PerformanceType[] = ["话剧", "音乐剧", "舞蹈", "音乐会", "戏曲", "其他"]
 const perfScales: PerformanceScale[] = ["小型", "中型", "大型", "特大型"]
 
 export default function NewPerformance() {
   const navigate = useNavigate()
-  const { stages, troupes, addPerformance, matchApprovalBranch, addOccupancy } = useTheaterStore()
+  const { stages, troupes, occupancies, addPerformance, matchApprovalBranch, addOccupancy } = useTheaterStore()
 
   const [name, setName] = useState("")
   const [troupeId, setTroupeId] = useState("")
@@ -26,6 +26,18 @@ export default function NewPerformance() {
   const [expandSound, setExpandSound] = useState(false)
 
   const selectedStage = stages.find(s => s.id === stageId)
+  const getTroupeName = (id: string) => troupes.find(t => t.id === id)?.name ?? "未知剧团"
+  const getStageName = (id: string) => stages.find(s => s.id === id)?.name ?? "未知舞台"
+
+  const conflicts = useMemo<Occupancy[]>(() => {
+    if (!stageId || !date || !startTime || !endTime) return []
+    return occupancies.filter(o => {
+      if (o.cancelled) return false
+      if (o.stageId !== stageId) return false
+      if (o.date !== date) return false
+      return startTime < o.endTime && o.startTime < endTime
+    })
+  }, [stageId, date, startTime, endTime, occupancies])
 
   const previewPerf: Performance = {
     id: "", name, troupeId, stageId, type, date, startTime, endTime,
@@ -56,6 +68,10 @@ export default function NewPerformance() {
   }
 
   const handleSubmit = (status: "draft" | "pending") => {
+    if (status === "pending" && conflicts.length > 0) {
+      const ok = confirm(`检测到 ${conflicts.length} 个档期冲突，是否仍要提交审批？`)
+      if (!ok) return
+    }
     const id = `perf-${Date.now()}`
     addPerformance({
       ...previewPerf, id, status,
@@ -114,6 +130,44 @@ export default function NewPerformance() {
               <input type="time" className="input-field" value={endTime} onChange={e => setEndTime(e.target.value)} />
             </div>
           </div>
+
+          {conflicts.length > 0 && (
+            <div className="mt-3 card !border-theater-red/40">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle size={16} className="text-theater-red-light shrink-0" />
+                <span className="text-theater-red-light text-sm font-semibold">档期冲突 ({conflicts.length})</span>
+              </div>
+              <div className="space-y-1.5">
+                {conflicts.map(occ => (
+                  <div key={occ.id} className="bg-theater-red/10 rounded-lg px-3 py-2 text-xs">
+                    <div className="flex items-center gap-1.5 text-theater-cream">
+                      <Clock size={11} className="text-theater-red-light" />
+                      <span>{occ.startTime}–{occ.endTime}</span>
+                      <span className="text-white/30">|</span>
+                      <span className={`badge ${
+                        occ.type === "演出" ? "bg-theater-gold/20 text-theater-gold" :
+                        occ.type === "排练" ? "bg-blue-500/20 text-blue-300" :
+                        "bg-orange-500/20 text-orange-300"
+                      } text-[9px]`}>{occ.type}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1 text-white/50">
+                      <Users size={10} />
+                      <span>{getTroupeName(occ.troupeId)}</span>
+                      {occ.source === "periodic" && (
+                        <span className="badge bg-white/5 text-white/40 text-[9px]">周期</span>
+                      )}
+                      {occ.source === "performance" && (
+                        <span className="badge bg-white/5 text-white/40 text-[9px]">演出登记</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-[11px] text-white/40">
+                提示：冲突时段可能导致演出无法正常进行，请调整日期或联系冲突方协商。
+              </p>
+            </div>
+          )}
         </section>
 
         {selectedStage && (
