@@ -130,10 +130,19 @@ export default function OccupancyDetail() {
         </div>
       )}
 
-      {occ.isException && (
+      {occ.cancelled && (
         <div className="card border border-theater-red/30 mb-3 flex items-center gap-2">
           <AlertTriangle size={16} className="text-theater-red-light shrink-0" />
           <span className="badge bg-theater-red/20 text-theater-red-light">
+            已取消
+          </span>
+        </div>
+      )}
+
+      {occ.isException && (
+        <div className="card border border-amber-500/30 mb-3 flex items-center gap-2">
+          <AlertTriangle size={16} className="text-amber-400 shrink-0" />
+          <span className="badge bg-amber-500/20 text-amber-400">
             已例外调整
           </span>
         </div>

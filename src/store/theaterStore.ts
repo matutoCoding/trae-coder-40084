@@ -79,7 +79,7 @@ export const useTheaterStore = create<TheaterStore>((set, get) => ({
       if (getDay(current) === rule.dayOfWeek) {
         const dateStr = format(current, "yyyy-MM-dd")
         const exists = get().occupancies.some(
-          (o) => o.date === dateStr && o.stageId === rule.stageId && o.periodicRuleId === ruleId && !o.isException
+          (o) => o.date === dateStr && o.stageId === rule.stageId && o.periodicRuleId === ruleId
         )
         if (!exists) {
           result.push({
@@ -93,6 +93,7 @@ export const useTheaterStore = create<TheaterStore>((set, get) => ({
             source: "periodic",
             periodicRuleId: rule.id,
             isException: false,
+            cancelled: false,
           })
         }
       }
@@ -110,6 +111,12 @@ export const useTheaterStore = create<TheaterStore>((set, get) => ({
   deleteApprovalRoute: (id) => set((s) => ({ approvalRoutes: s.approvalRoutes.filter((r) => r.id !== id) })),
 
   matchApprovalBranch: (performance) => {
+    const parseValue = (val: string | number | string[]): string[] => {
+      if (Array.isArray(val)) return val
+      if (typeof val === "string" && val.includes(",")) return val.split(",").map(s => s.trim())
+      return [String(val)]
+    }
+
     const routes = [...get().approvalRoutes].sort((a, b) => a.priority - b.priority)
     for (const route of routes) {
       const allMatch = route.conditions.every((cond) => {
@@ -121,15 +128,21 @@ export const useTheaterStore = create<TheaterStore>((set, get) => ({
               ? performance.expectedAudience
               : performance.expectedAudience
         switch (cond.operator) {
-          case "eq": return fieldValue === cond.value
-          case "neq": return fieldValue !== cond.value
+          case "eq": return String(fieldValue) === String(cond.value)
+          case "neq": return String(fieldValue) !== String(cond.value)
           case "gt": return Number(fieldValue) > Number(cond.value)
           case "lt": return Number(fieldValue) < Number(cond.value)
-          case "in": return Array.isArray(cond.value) && cond.value.includes(String(fieldValue))
+          case "in": {
+            const values = parseValue(cond.value)
+            return values.includes(String(fieldValue))
+          }
           case "between": {
-            if (Array.isArray(cond.value) && cond.value.length === 2) {
+            const values = parseValue(cond.value)
+            if (values.length >= 2) {
               const num = Number(fieldValue)
-              return num >= Number(cond.value[0]) && num <= Number(cond.value[1])
+              const low = Number(values[0])
+              const high = Number(values[1])
+              return num >= low && num <= high
             }
             return false
           }

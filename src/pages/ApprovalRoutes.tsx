@@ -148,7 +148,7 @@ export default function ApprovalRoutes() {
                 <div className="text-xs text-white/40 mb-1.5">审批分支</div>
                 <span
                   className="badge bg-theater-navy-light text-theater-gold border border-theater-gold/30 cursor-pointer hover:bg-theater-gold/10 transition-colors"
-                  onClick={() => navigate("/approval-branches")}
+                  onClick={() => navigate("/approval/branches")}
                 >
                   {getBranchName(route.branchId)}
                 </span>

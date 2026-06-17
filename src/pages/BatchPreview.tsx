@@ -29,7 +29,7 @@ export default function BatchPreview() {
 
   const conflicts = useMemo(() => {
     const set = new Set<string>()
-    const existing = [...occupancies, ...previewItems]
+    const existing = [...occupancies.filter(o => !o.cancelled), ...previewItems]
     for (let i = 0; i < existing.length; i++) {
       for (let j = i + 1; j < existing.length; j++) {
         const a = existing[i], b = existing[j]

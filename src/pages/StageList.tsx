@@ -1,6 +1,7 @@
+import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { motion } from "framer-motion"
-import { Plus, Users, Zap, Volume2 } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Plus, Users, Zap, Volume2, X, ChevronDown } from "lucide-react"
 import { useTheaterStore } from "@/store/theaterStore"
 import type { StageType } from "@/types"
 
@@ -11,9 +12,54 @@ const typeBadgeColor: Record<StageType, string> = {
   "露天舞台": "bg-green-500/20 text-green-400",
 }
 
+const stageTypes: StageType[] = ["大剧场", "小剧场", "实验剧场", "露天舞台"]
+
 export default function StageList() {
   const navigate = useNavigate()
   const stages = useTheaterStore((s) => s.stages)
+  const addStage = useTheaterStore((s) => s.addStage)
+  const [showForm, setShowForm] = useState(false)
+  const [name, setName] = useState("")
+  const [type, setType] = useState<StageType>("小剧场")
+  const [seatCount, setSeatCount] = useState(200)
+  const [lightingCount, setLightingCount] = useState(20)
+  const [soundCount, setSoundCount] = useState(12)
+  const [typeDropdownOpen, setTypeDropdownOpen] = useState(false)
+
+  const submit = () => {
+    if (!name.trim()) return
+    const now = Date.now()
+    const lightingEquipment = Array.from({ length: Math.min(6, Math.ceil(lightingCount / 6)) }, (_, i) => ({
+      id: `el-new-${now}-${i}`,
+      name: ["聚光灯", "面光灯", "侧光灯", "天幕灯", "换色器", "调光台"][i] || "灯光设备",
+      category: "灯光" as const,
+      spec: "基础配置",
+      quantity: Math.min(Math.ceil(lightingCount / 6), lightingCount - i * 6),
+      stageId: `stage-${now}`,
+    }))
+    const soundEquipment = Array.from({ length: Math.min(5, Math.ceil(soundCount / 4)) }, (_, i) => ({
+      id: `es-new-${now}-${i}`,
+      name: ["主扩音箱", "返听音箱", "调音台", "无线话筒", "头戴话筒"][i] || "音响设备",
+      category: "音响" as const,
+      spec: "基础配置",
+      quantity: Math.min(Math.ceil(soundCount / 4), soundCount - i * 4),
+      stageId: `stage-${now}`,
+    }))
+    addStage({
+      id: `stage-${now}`,
+      name,
+      type,
+      seatCount,
+      status: "active",
+      lightingEquipment,
+      soundEquipment,
+    })
+    setShowForm(false)
+    setName("")
+    setSeatCount(200)
+    setLightingCount(20)
+    setSoundCount(12)
+  }
 
   return (
     <div className="page-container">
@@ -23,12 +69,113 @@ export default function StageList() {
         </h1>
         <button
           className="btn-gold flex items-center gap-1.5 text-sm"
-          onClick={() => alert("新建舞台功能即将上线")}
+          onClick={() => setShowForm(true)}
         >
           <Plus size={16} />
           新建舞台
         </button>
       </div>
+
+      <AnimatePresence>
+        {showForm && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="card-gold mb-6"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-theater-cream">新建舞台</h2>
+              <button onClick={() => setShowForm(false)} className="text-white/40 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-white/40 mb-1 block">舞台名称</label>
+                <input
+                  className="input-field"
+                  placeholder="请输入舞台名称"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-white/40 mb-1 block">舞台类型</label>
+                <div className="relative">
+                  <button
+                    onClick={() => setTypeDropdownOpen(!typeDropdownOpen)}
+                    className="select-field w-full text-left flex items-center justify-between"
+                  >
+                    {type}
+                    <ChevronDown className="w-4 h-4 text-white/40" />
+                  </button>
+                  <AnimatePresence>
+                    {typeDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                        className="absolute z-20 w-full mt-1 bg-theater-navy-dark border border-white/10 rounded-xl overflow-hidden"
+                      >
+                        {stageTypes.map((t) => (
+                          <button
+                            key={t}
+                            onClick={() => { setType(t); setTypeDropdownOpen(false) }}
+                            className={`w-full px-4 py-2.5 text-left hover:bg-white/5 ${type === t ? "text-theater-gold" : "text-theater-cream"}`}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs text-white/40 mb-1 block">座位数</label>
+                  <input
+                    type="number"
+                    className="input-field"
+                    value={seatCount}
+                    onChange={(e) => setSeatCount(Math.max(1, Number(e.target.value)))}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-white/40 mb-1 block">灯光设备数</label>
+                  <input
+                    type="number"
+                    className="input-field"
+                    value={lightingCount}
+                    onChange={(e) => setLightingCount(Math.max(0, Number(e.target.value)))}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-white/40 mb-1 block">音响设备数</label>
+                  <input
+                    type="number"
+                    className="input-field"
+                    value={soundCount}
+                    onChange={(e) => setSoundCount(Math.max(0, Number(e.target.value)))}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2">
+                <button className="btn-outline text-sm" onClick={() => setShowForm(false)}>
+                  取消
+                </button>
+                <button className="btn-gold text-sm" onClick={submit}>
+                  确认创建
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-1 gap-4">
         {stages.map((stage, i) => {

@@ -39,7 +39,7 @@ export default function ScheduleCalendar() {
   )
 
   const filteredOccupancies = useMemo(() => {
-    let occs = occupancies
+    let occs = occupancies.filter(o => !o.cancelled)
     if (selectedStageId !== "all") {
       occs = occs.filter((o) => o.stageId === selectedStageId)
     }

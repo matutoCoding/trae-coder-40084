@@ -96,6 +96,7 @@ function generateOccupanciesFromRules(rules: PeriodicRule[], weeksAhead: number 
           source: "periodic",
           periodicRuleId: rule.id,
           isException: false,
+          cancelled: false,
         })
       }
       current = addDays(current, 1)
@@ -115,6 +116,7 @@ const manualOccupancies: Occupancy[] = [
     type: "演出",
     source: "performance",
     isException: false,
+    cancelled: false,
     performanceId: "perf-1",
   },
   {
@@ -127,6 +129,7 @@ const manualOccupancies: Occupancy[] = [
     type: "演出",
     source: "performance",
     isException: false,
+    cancelled: false,
     performanceId: "perf-2",
   },
   {
@@ -139,6 +142,7 @@ const manualOccupancies: Occupancy[] = [
     type: "演出",
     source: "performance",
     isException: false,
+    cancelled: false,
     performanceId: "perf-3",
   },
 ]

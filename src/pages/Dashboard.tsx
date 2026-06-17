@@ -11,7 +11,7 @@ export default function Dashboard() {
 
   const today = format(new Date(), "yyyy-MM-dd")
   const todayDisplay = format(new Date(), "M月d日 EEEE", { locale: zhCN })
-  const todayOccupancies = occupancies.filter(o => o.date === today)
+  const todayOccupancies = occupancies.filter(o => o.date === today && !o.cancelled)
   const pendingCount = performances.filter(p => p.status === "pending").length
 
   const getTroupeName = (id: string) => troupes.find(t => t.id === id)?.name ?? ""
@@ -23,6 +23,7 @@ export default function Dashboard() {
   const stageUtilization = stages.map(stage => {
     const weekOccs = occupancies.filter(o => {
       if (o.stageId !== stage.id) return false
+      if (o.cancelled) return false
       const d = parseISO(o.date)
       return isWithinInterval(d, { start: weekStart, end: weekEnd })
     })
@@ -132,8 +133,8 @@ export default function Dashboard() {
           <div className="grid grid-cols-3 gap-3">
             {[
               { icon: Plus, label: "新建演出", path: "/performances/new" },
-              { icon: Calendar, label: "排期日历", path: "/calendar" },
-              { icon: Repeat, label: "周期规则", path: "/periodic-rules" },
+              { icon: Calendar, label: "排期日历", path: "/schedule" },
+              { icon: Repeat, label: "周期规则", path: "/periodic" },
             ].map(({ icon: Icon, label, path }, i) => (
               <motion.button
                 key={label}

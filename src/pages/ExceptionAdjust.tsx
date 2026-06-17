@@ -34,8 +34,7 @@ export default function ExceptionAdjust() {
     setForm((p) => ({ ...p, [key]: val }))
 
   const handleCancel = () => {
-    updateOccupancy(occupancy.id, { isException: true })
-    deleteOccupancy(occupancy.id)
+    updateOccupancy(occupancy.id, { isException: true, cancelled: true })
     navigate(-1)
   }
 
@@ -51,7 +50,7 @@ export default function ExceptionAdjust() {
   }
 
   const handleReset = () => {
-    updateOccupancy(occupancy.id, { isException: false })
+    updateOccupancy(occupancy.id, { isException: false, cancelled: false })
     navigate(-1)
   }
 

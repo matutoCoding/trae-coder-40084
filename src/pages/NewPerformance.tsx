@@ -65,7 +65,7 @@ export default function NewPerformance() {
     if (status === "pending") {
       addOccupancy({
         id: `occ-${Date.now()}`, stageId, troupeId, date, startTime, endTime,
-        type: "演出", source: "performance", isException: false, performanceId: id,
+        type: "演出", source: "performance", isException: false, cancelled: false, performanceId: id,
       })
     }
     navigate(`/performances/${id}`)

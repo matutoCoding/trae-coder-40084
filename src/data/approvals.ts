@@ -82,4 +82,31 @@ export const approvalRoutes: ApprovalRoute[] = [
     branchId: "branch-4",
     priority: 0,
   },
+  {
+    id: "route-6",
+    name: "舞蹈&戏曲合并审批",
+    conditions: [
+      { id: "rc-6-1", field: "performanceType", operator: "in", value: "舞蹈,戏曲" },
+    ],
+    branchId: "branch-2",
+    priority: 5,
+  },
+  {
+    id: "route-7",
+    name: "观众人数500-1000区间",
+    conditions: [
+      { id: "rc-7-1", field: "expectedAudience", operator: "between", value: "500,1000" },
+    ],
+    branchId: "branch-1",
+    priority: 6,
+  },
+  {
+    id: "route-8",
+    name: "观众人数>1000特批",
+    conditions: [
+      { id: "rc-8-1", field: "expectedAudience", operator: "gt", value: "1000" },
+    ],
+    branchId: "branch-1",
+    priority: 7,
+  },
 ]

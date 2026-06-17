@@ -47,6 +47,7 @@ export interface Occupancy {
   source: OccupancySource
   periodicRuleId?: string
   isException: boolean
+  cancelled: boolean
   performanceId?: string
   remark?: string
 }
